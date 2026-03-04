@@ -1,12 +1,17 @@
-import { Text, View, StyleSheet } from 'react-native';
-import { multiply } from 'react-native-toastfx';
-
-const result = multiply(3, 7);
+import { View, StyleSheet, Button } from 'react-native';
+import Toast, { showSuccess } from 'react-native-toastfx';
 
 export default function App() {
+  const handlePress = () => {
+    showSuccess({
+      title: 'react-native-toastfx',
+      message: 'This is an animated toast success message.',
+    });
+  };
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Button title="Press Me" onPress={handlePress} />
+      <Toast />
     </View>
   );
 }
