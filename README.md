@@ -4,6 +4,8 @@ Beautiful, animated toast notifications for React Native — powered by [Reanima
 
 > Stacked. Smooth. Fully typed.
 
+<img src="./assets/preview.gif" width="300" />
+
 ---
 
 ## ✨ Features
