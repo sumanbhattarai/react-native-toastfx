@@ -221,4 +221,4 @@ const styles = StyleSheet.create({
 
 ## 📄 License
 
-MIT © [Your Name](https://github.com/yourusername)
+MIT © [Suman Bhattarai](https://github.com/sumanbhattarai)
