@@ -1,6 +1,6 @@
 {
   "name": "react-native-toastfx",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "react-native-toastfx is a lightweight, fully customizable Toast notification library for React Native, supporting smooth animations and visual effects. It works in both Expo managed and React Native CLI apps, providing an easy-to-use global API to show temporary messages, alerts, or status notifications anywhere in your app.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
