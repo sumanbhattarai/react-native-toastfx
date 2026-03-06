@@ -2,6 +2,10 @@
 
 Beautiful, animated toast notifications for React Native — powered by [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/).
 
+[![npm version](https://img.shields.io/npm/v/react-native-toastfx)](https://www.npmjs.com/package/react-native-toastfx)
+[![npm downloads](https://img.shields.io/npm/dm/react-native-toastfx)](https://www.npmjs.com/package/react-native-toastfx)
+[![license](https://img.shields.io/npm/l/react-native-toastfx)](./LICENSE)
+
 > Stacked. Smooth. Fully typed.
 
 <img src="./assets/preview.gif" width="300" />
@@ -16,6 +20,7 @@ Beautiful, animated toast notifications for React Native — powered by [Reanima
 - 👻 Progressive opacity fade — older toasts ghost out
 - ✏️ Custom `title` and `message` per toast
 - 🎛️ Global `titleStyle` and `messageStyle` overrides
+- 🎬 Fully customisable animation via `animationConfig` + built-in presets
 - ⏱️ Configurable auto-dismiss duration
 - 📦 Full TypeScript support
 - ✅ Works with Expo and bare React Native
@@ -103,10 +108,11 @@ showWarning({
 
 Mount this **once** at the root of your app. It listens to the global event emitter and renders toasts on top of all other content.
 
-| Prop           | Type        | Required | Default | Description                                           |
-| -------------- | ----------- | -------- | ------- | ----------------------------------------------------- |
-| `titleStyle`   | `TextStyle` | ❌       | —       | Override text style for the title across all toasts   |
-| `messageStyle` | `TextStyle` | ❌       | —       | Override text style for the message across all toasts |
+| Prop              | Type                   | Required | Default | Description                                           |
+| ----------------- | ---------------------- | -------- | ------- | ----------------------------------------------------- |
+| `titleStyle`      | `TextStyle`            | ❌       | —       | Override text style for the title across all toasts   |
+| `messageStyle`    | `TextStyle`            | ❌       | —       | Override text style for the message across all toasts |
+| `animationConfig` | `ToastAnimationConfig` | ❌       | —       | Full control over spring physics and timing durations |
 
 ```tsx
 <Toast
@@ -128,6 +134,51 @@ Each toast is animated with Reanimated 4 springs and timing functions:
 | **Progress bar** | Linearly drains over the toast's duration                        |
 | **Stack shift**  | Smoothly re-scales and fades when a new toast arrives            |
 | **Exit**         | Springs back up off-screen with a fade out                       |
+
+---
+
+## 🎛️ Animation Config
+
+Use the `animationConfig` prop to customise every spring and timing value independently.
+
+### `ToastAnimationConfig`
+
+| Key                  | Type               | Default                                      | Description                     |
+| -------------------- | ------------------ | -------------------------------------------- | ------------------------------- |
+| `entrySpring`        | `WithSpringConfig` | `{ damping: 16, stiffness: 180, mass: 0.8 }` | Slide-in from top               |
+| `exitSpring`         | `WithSpringConfig` | `{ damping: 18, stiffness: 200 }`            | Slide-out on dismiss            |
+| `scaleSpring`        | `WithSpringConfig` | `{ damping: 14, stiffness: 200 }`            | Scale punch on entry            |
+| `stackSpring`        | `WithSpringConfig` | `{ damping: 14, stiffness: 180 }`            | Scale shift when toasts stack   |
+| `iconSpring`         | `WithSpringConfig` | `{ damping: 10, stiffness: 200 }`            | Icon pop animation              |
+| `fadeInDuration`     | `number`           | `250`                                        | Fade-in speed in ms             |
+| `fadeOutDuration`    | `number`           | `280`                                        | Fade-out speed in ms            |
+| `stackShiftDuration` | `number`           | `300`                                        | Stack opacity shift speed in ms |
+
+> **Tip:** Lower `damping` = bouncier. Higher `stiffness` = snappier. All keys are optional — unset keys fall back to their defaults.
+
+### Built-in Presets
+
+Four presets are exported as `TOAST_ANIMATION_PRESETS`:
+
+| Preset    | Feel                                  |
+| --------- | ------------------------------------- |
+| `default` | Balanced spring with subtle bounce    |
+| `bouncy`  | Exaggerated overshoot on every spring |
+| `snappy`  | Fast, sharp, no bounce                |
+| `gentle`  | Slow, soft, minimal movement          |
+
+```tsx
+import Toast, { TOAST_ANIMATION_PRESETS } from 'react-native-toastfx';
+
+// Use a preset
+<Toast animationConfig={TOAST_ANIMATION_PRESETS.bouncy} />
+
+// Customise individual values
+<Toast animationConfig={{ entrySpring: { damping: 6, stiffness: 120 }, fadeInDuration: 150 }} />
+
+// Mix a preset with overrides
+<Toast animationConfig={{ ...TOAST_ANIMATION_PRESETS.snappy, fadeInDuration: 80 }} />
+```
 
 ---
 
@@ -155,6 +206,7 @@ import Toast, {
   showSuccess,
   showError,
   showWarning,
+  TOAST_ANIMATION_PRESETS,
 } from 'react-native-toastfx';
 
 export default function App() {
@@ -191,6 +243,7 @@ export default function App() {
       <Toast
         titleStyle={{ fontWeight: '800' }}
         messageStyle={{ opacity: 0.85 }}
+        animationConfig={TOAST_ANIMATION_PRESETS.bouncy}
       />
     </View>
   );

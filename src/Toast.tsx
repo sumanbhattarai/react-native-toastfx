@@ -15,6 +15,7 @@ import Animated, {
   withSequence,
   runOnJS,
   Easing,
+  type WithSpringConfig,
 } from 'react-native-reanimated';
 import { toastEmitter, TOAST_EVENT } from './toastEmitter';
 
@@ -107,6 +108,72 @@ const TOAST_CONFIG: Record<ToastType, TypeConfig> = {
   },
 };
 
+// ─── Animation config ─────────────────────────────────────────────────────────
+
+export interface ToastAnimationConfig {
+  // ── Springs (bounciness) ──────────────────────────────────────────────────
+  /** Slide-in from top. Lower damping = bouncier. (default: { damping: 16, stiffness: 180, mass: 0.8 }) */
+  entrySpring?: WithSpringConfig;
+  /** Slide-out to top on dismiss. (default: { damping: 18, stiffness: 200 }) */
+  exitSpring?: WithSpringConfig;
+  /** Scale punch on entry. (default: { damping: 14, stiffness: 200 }) */
+  scaleSpring?: WithSpringConfig;
+  /** Scale shift when toasts stack behind each other. (default: { damping: 14, stiffness: 180 }) */
+  stackSpring?: WithSpringConfig;
+  /** Icon pop/bounce on entry. (default: { damping: 10, stiffness: 200 }) */
+  iconSpring?: WithSpringConfig;
+  // ── Timing (speed in ms) ──────────────────────────────────────────────────
+  /** Fade-in duration on entry in ms. (default: 250) */
+  fadeInDuration?: number;
+  /** Fade-out + scale-out duration on dismiss in ms. (default: 280) */
+  fadeOutDuration?: number;
+  /** Stack opacity shift duration in ms. (default: 300) */
+  stackShiftDuration?: number;
+}
+
+const DEFAULT_ANIMATION_CONFIG: Required<ToastAnimationConfig> = {
+  entrySpring: { damping: 16, stiffness: 180, mass: 0.8 },
+  exitSpring: { damping: 18, stiffness: 200 },
+  scaleSpring: { damping: 14, stiffness: 200 },
+  stackSpring: { damping: 14, stiffness: 180 },
+  iconSpring: { damping: 10, stiffness: 200 },
+  fadeInDuration: 250,
+  fadeOutDuration: 280,
+  stackShiftDuration: 300,
+};
+
+/** Preset configs — pass directly to `animationConfig` */
+export const TOAST_ANIMATION_PRESETS = {
+  /** Default — balanced spring with subtle bounce */
+  default: {} as ToastAnimationConfig,
+  /** Exaggerated bounce on every spring */
+  bouncy: {
+    entrySpring: { damping: 6, stiffness: 120, mass: 0.9 },
+    scaleSpring: { damping: 6, stiffness: 150 },
+    iconSpring: { damping: 4, stiffness: 300 },
+    exitSpring: { damping: 12, stiffness: 180 },
+  } as ToastAnimationConfig,
+  /** Fast, snappy, no bounce */
+  snappy: {
+    entrySpring: { damping: 30, stiffness: 350 },
+    exitSpring: { damping: 30, stiffness: 350 },
+    scaleSpring: { damping: 25, stiffness: 300 },
+    iconSpring: { damping: 20, stiffness: 400 },
+    fadeInDuration: 120,
+    fadeOutDuration: 150,
+  } as ToastAnimationConfig,
+  /** Slow, gentle, minimal bounce */
+  gentle: {
+    entrySpring: { damping: 22, stiffness: 100, mass: 1.2 },
+    exitSpring: { damping: 22, stiffness: 100 },
+    scaleSpring: { damping: 20, stiffness: 120 },
+    iconSpring: { damping: 18, stiffness: 150 },
+    fadeInDuration: 400,
+    fadeOutDuration: 400,
+    stackShiftDuration: 450,
+  } as ToastAnimationConfig,
+} as const;
+
 // ─── ToastItem ────────────────────────────────────────────────────────────────
 
 interface ToastItemProps {
@@ -116,6 +183,7 @@ interface ToastItemProps {
   exiting: boolean;
   titleStyle?: TextStyle;
   messageStyle?: TextStyle;
+  animationConfig?: ToastAnimationConfig;
 }
 
 const ToastItem: React.FC<ToastItemProps> = ({
@@ -125,10 +193,23 @@ const ToastItem: React.FC<ToastItemProps> = ({
   exiting,
   titleStyle,
   messageStyle,
+  animationConfig,
 }) => {
   const config = TOAST_CONFIG[toast.type];
   const resolvedTitle = toast.title || config.defaultTitle;
   const idx = clampStackIndex(stackIndex);
+
+  const anim = { ...DEFAULT_ANIMATION_CONFIG, ...animationConfig };
+  const {
+    entrySpring,
+    exitSpring,
+    scaleSpring,
+    stackSpring,
+    iconSpring,
+    fadeInDuration,
+    fadeOutDuration,
+    stackShiftDuration,
+  } = anim;
 
   const translateY = useSharedValue<number>(-120);
   const opacity = useSharedValue<number>(0);
@@ -140,30 +221,32 @@ const ToastItem: React.FC<ToastItemProps> = ({
   const stackScale = useSharedValue<number>(STACK_SCALE[idx]);
 
   const hide = useCallback((): void => {
-    translateY.value = withSpring(-120, { damping: 18, stiffness: 200 });
-    opacity.value = withTiming(0, { duration: 280 });
-    scale.value = withTiming(0.88, { duration: 280 });
-  }, [opacity, scale, translateY]);
+    translateY.value = withSpring(-120, exitSpring);
+    opacity.value = withTiming(0, { duration: fadeOutDuration });
+    scale.value = withTiming(0.88, { duration: fadeOutDuration });
+  }, [opacity, scale, translateY, exitSpring, fadeOutDuration]);
 
   // Entry — runs once on mount
   useEffect(() => {
-    translateY.value = withSpring(0, {
-      damping: 16,
-      stiffness: 180,
-      mass: 0.8,
-    });
+    translateY.value = withSpring(0, entrySpring);
     opacity.value = withTiming(STACK_OPACITY[0], {
-      duration: 250,
+      duration: fadeInDuration,
       easing: Easing.out(Easing.quad),
     });
-    scale.value = withSpring(STACK_SCALE[0], { damping: 14, stiffness: 200 });
+    scale.value = withSpring(STACK_SCALE[0], scaleSpring);
 
     iconScale.value = withSequence(
       withTiming(0, { duration: 0 }),
-      withSpring(1.3, { damping: 8, stiffness: 300 }),
-      withSpring(1, { damping: 12, stiffness: 250 })
+      withSpring(1.3, {
+        damping: iconSpring.damping,
+        stiffness: iconSpring.stiffness,
+      }),
+      withSpring(1, {
+        damping: (iconSpring.damping ?? 10) + 2,
+        stiffness: iconSpring.stiffness,
+      })
     );
-    iconRotate.value = withSpring(0, { damping: 10, stiffness: 200 });
+    iconRotate.value = withSpring(0, iconSpring);
 
     progressWidth.value = withTiming(0, {
       duration: toast.duration,
@@ -183,12 +266,12 @@ const ToastItem: React.FC<ToastItemProps> = ({
   useEffect(() => {
     if (exiting) return;
     const cIdx = clampStackIndex(stackIndex);
-    stackOpacity.value = withTiming(STACK_OPACITY[cIdx], { duration: 300 });
-    stackScale.value = withSpring(STACK_SCALE[cIdx], {
-      damping: 14,
-      stiffness: 180,
+    stackOpacity.value = withTiming(STACK_OPACITY[cIdx], {
+      duration: stackShiftDuration,
     });
-  }, [stackIndex, exiting, stackOpacity, stackScale]);
+    stackScale.value = withSpring(STACK_SCALE[cIdx], stackSpring);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackIndex, exiting, stackOpacity, stackScale, stackSpring]);
 
   const containerStyle = useAnimatedStyle(() => ({
     transform: [
@@ -272,9 +355,22 @@ export interface ToastProps {
   titleStyle?: TextStyle;
   /** Override style for the message text across all toasts */
   messageStyle?: TextStyle;
+  /**
+   * Full control over spring physics and timing durations.
+   * Use `TOAST_ANIMATION_PRESETS` for ready-made options, or build your own.
+   *
+   * @example
+   * <Toast animationConfig={TOAST_ANIMATION_PRESETS.bouncy} />
+   * <Toast animationConfig={{ entrySpring: { damping: 6, stiffness: 120 }, fadeInDuration: 150 }} />
+   */
+  animationConfig?: ToastAnimationConfig;
 }
 
-const Toast: React.FC<ToastProps> = ({ titleStyle, messageStyle }) => {
+const Toast: React.FC<ToastProps> = ({
+  titleStyle,
+  messageStyle,
+  animationConfig,
+}) => {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const exitingIds = useRef<Set<number>>(new Set());
   const idRef = useRef(0);
@@ -317,6 +413,7 @@ const Toast: React.FC<ToastProps> = ({ titleStyle, messageStyle }) => {
           exiting={exitingIds.current.has(toast.id)}
           titleStyle={titleStyle}
           messageStyle={messageStyle}
+          animationConfig={animationConfig}
         />
       ))}
     </View>
